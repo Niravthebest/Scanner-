@@ -198,6 +198,8 @@
 
   function detectPullback(bars, i, m, o) {
     var today = bars[i];
+    // A big gap up is an episodic pivot, not a pullback, even if the low tags support.
+    if (m.gapPct >= o.minGapPct) return null;
     var inUptrend =
       today.close > m.ema50 && m.ema21 > m.ema50 && m.ema21 > m.ema21Prev5;
     if (!inUptrend) return null;

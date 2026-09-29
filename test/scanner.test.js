@@ -106,6 +106,16 @@ test('demo setups hold across seeds', () => {
   }
 });
 
+test('a gap-up day is not also reported as a pullback', () => {
+  const ds = D.demoDataset(42, END);
+  const bars = ds.XPULL.slice();
+  const prev = bars[bars.length - 2].close;
+  // Same flush-and-reclaim day, but opening 10% above the prior close.
+  bars[bars.length - 1] = Object.assign({}, bars[bars.length - 1], { open: prev * 1.1, high: prev * 1.15 });
+  const r = S.analyze('X', bars, {});
+  assert.ok(!r.setups.some(s => s.type === 'Pullback'));
+});
+
 test('stop sizing uses the configured account and risk', () => {
   const ds = D.demoDataset(42, END);
   const r = S.analyze('XGAP', ds.XGAP, { accountSize: 50000, riskPct: 1, maxPositionPct: 100 });
