@@ -25,6 +25,7 @@
     runLookback: 40,
     minPullbackPct: 3, // how far off the recent high price must be
     supportTolPct: 1.5, // how close the day's low must get to support
+    pullbackMinCloseRangePct: 0, // require the close in the top part of the day's range (0 = off)
     // Breakout
     baseLength: 10,
     maxBaseRangePct: 15,
@@ -213,6 +214,9 @@
     var runPct = pctDiff(bars[hiIdx].high, lo);
     var offHighPct = -pctDiff(today.close, bars[hiIdx].high);
     if (runPct < o.minPriorRunPct || offHighPct < o.minPullbackPct) return null;
+    var range = today.high - today.low;
+    var closeInRangePct = range > 0 ? ((today.close - today.low) / range) * 100 : 100;
+    if (closeInRangePct < o.pullbackMinCloseRangePct) return null;
 
     // Highest support that the day's low tagged (or flushed through) and price reclaimed.
     var supports = [

@@ -23,6 +23,7 @@
     ['runLookback', 'Pullback: run lookback (days)', 1],
     ['minPullbackPct', 'Pullback: min off high (%)', 0.5],
     ['supportTolPct', 'Pullback: support tolerance (%)', 0.1],
+    ['pullbackMinCloseRangePct', 'Pullback: min close in day range (%)', 5],
     ['baseLength', 'Breakout: base length (days)', 1],
     ['maxBaseRangePct', 'Breakout: max base range (%)', 0.5],
     ['breakoutMinRvol', 'Breakout: min rel. volume (x)', 0.1]

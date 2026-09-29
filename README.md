@@ -34,12 +34,29 @@ npm test             # unit tests (Node 18+)
   end-of-day data, so the default gap between requests is 12.5 s. The key stays in your browser and is
   saved only if you tick "Remember key".
 
+## Backtest
+
+`backtest.js` replays the scanner day by day over historical daily bars (no look-ahead: a signal uses
+data up to that day's close) and simulates a portfolio with the same stop-based sizing.
+
+```sh
+node backtest-cli.js dataset.json --universe=symbols.txt --startDate=2023-07-01 \
+  [--entryMode=breakout|close] [--trailEma=10] [--partialDays=3] [--minPriorRunPct=20] \
+  [--marketFilter=QQQ:21] [--trades=trades.csv]
+```
+
+Rules: entry on a break of the signal day's high the next day (or at the signal close with
+`--entryMode=close`); stop at the setup stop, with gap-downs filled at the open and bars that touch both
+entry and stop counted as losses; sell a third after 3 days if in profit and move the stop to breakeven;
+exit the rest on a close below the trailing EMA. 0.05% slippage per side.
+
 ## Files
 
 - `scanner.js`: indicators, setup detection and position sizing (pure functions, also run under Node)
 - `data.js`: demo generator, CSV parser, Polygon client
 - `main.js`, `index.html`, `style.css`: the UI
-- `test/scanner.test.js`: tests
+- `backtest.js`, `backtest-cli.js`: portfolio backtest
+- `test/`: tests
 
 ## Caveats
 
