@@ -50,12 +50,36 @@ Rules: entry on a break of the signal day's high the next day (or at the signal 
 entry and stop counted as losses; sell a third after 3 days if in profit and move the stop to breakeven;
 exit the rest on a close below the trailing EMA. 0.05% slippage per side.
 
+## Intraday-entry backtest (Massive flat files)
+
+`intraday-backtest.js` tests Luk-style execution: candidates are picked before the open (daily
+scanner at the prior close on a momentum focus list, or a gap of 4%+ at the open), entry is a
+buy-stop one tick above the opening-range high, the stop is the low of day at entry (skipped if
+wider than 1x ADR or 6%), a stop hit later that day counts as a loss, and from the next day the
+position is managed on daily bars as above.
+
+Data comes from Massive (formerly Polygon.io) S3 flat files. `files.massive.com` must be allowed in
+the environment's network settings. Credentials are read from the environment, never from files:
+
+```sh
+export MASSIVE_ACCESS_KEY=...  MASSIVE_SECRET_KEY=...
+node tools/massive.js daily --from=2021-01-04 --to=2026-09-28 --out=daily.json      # full market, split-adjusted
+node intraday-cli.js candidates --daily=daily.json --from=2021-06-01 --to=2026-09-28 --out=candidates.json
+node tools/massive.js intraday --candidates=candidates.json --out=intraday.json      # 5-minute bars, candidate days only
+node intraday-cli.js run --daily=daily.json --candidates=candidates.json --intraday=intraday.json --trades=trades.csv
+```
+
+The flat files are unadjusted; `tools/massive.js` back-adjusts splits it detects from exact-ratio
+overnight gaps. ETFs are not flagged in the files: pass `--exclude=etfs.txt` to drop them.
+
 ## Files
 
 - `scanner.js`: indicators, setup detection and position sizing (pure functions, also run under Node)
 - `data.js`: demo generator, CSV parser, Polygon client
 - `main.js`, `index.html`, `style.css`: the UI
-- `backtest.js`, `backtest-cli.js`: portfolio backtest
+- `backtest.js`, `backtest-cli.js`: daily-bar portfolio backtest
+- `intraday-backtest.js`, `intraday-cli.js`: opening-range-break backtest
+- `tools/massive.js`: Massive flat-file downloader (daily + intraday)
 - `test/`: tests
 
 ## Caveats
