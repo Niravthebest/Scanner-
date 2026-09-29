@@ -1,60 +1,158 @@
- 
-<html>
+<!doctype html>
+<html lang="en">
   <head>
-    <title>Image recognition</title>
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css">
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/js/bootstrap.min.js"></script>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/webcamjs/1.0.26/webcam.js"></script>
-
-   <link rel="stylesheet" href="style.css">
-  
+    <title>Momentum Scanner</title>
+    <link rel="stylesheet" href="style.css">
   </head>
 
   <body>
-  <div class="container">
-    
-    <center>
+    <header class="page-header">
+      <h1>Momentum Scanner</h1>
+      <p class="subtitle">
+        Gap-ups, pullbacks and breakouts in the style of Martin Luk&rsquo;s USIC-winning swing trading,
+        with every position sized from its stop.
+      </p>
+    </header>
 
-      <h3 class="btn btn-default heading" id="h1">Image Recognization!</h3>
+    <main>
+      <section class="card" aria-labelledby="data-h">
+        <h2 id="data-h">1. Data</h2>
+        <div class="tabs" role="tablist">
+          <button role="tab" class="tab" data-source="demo" aria-selected="true">Demo</button>
+          <button role="tab" class="tab" data-source="csv" aria-selected="false">CSV file</button>
+          <button role="tab" class="tab" data-source="polygon" aria-selected="false">Polygon.io</button>
+        </div>
 
-      <br><br>
+        <div class="source-panel" data-panel="demo">
+          <p class="hint">Fictional tickers built to show each setup and each filter. Use this to learn the tool.</p>
+        </div>
 
-      <p style="font-size: 22px;">Model is trained to identify the following objects: </p>
+        <div class="source-panel" data-panel="csv" hidden>
+          <label class="field">
+            <span>Daily bars CSV</span>
+            <input type="file" id="csv-file" accept=".csv,text/csv">
+          </label>
+          <p class="hint">
+            Columns: <code>symbol,date,open,high,low,close,volume</code>, one row per symbol per day,
+            at least 60 days per symbol. Without a <code>symbol</code> column the file name is used.
+          </p>
+        </div>
 
-      <b class="name_of_objects">
-        Toy Gun
-        <hr>
-        Pencil Box
-        <hr>
-        Glasses
-        <hr>
-        Notebook
-        <hr>
-        Mouse (Touchpad)
-        <hr>
-      </b>
+        <div class="source-panel" data-panel="polygon" hidden>
+          <label class="field">
+            <span>API key</span>
+            <input type="password" id="polygon-key" autocomplete="off" placeholder="Your Polygon.io key">
+          </label>
+          <label class="check">
+            <input type="checkbox" id="polygon-remember"> Remember key in this browser
+          </label>
+          <label class="field">
+            <span>Symbols</span>
+            <textarea id="polygon-symbols" rows="3" placeholder="NVDA, PLTR, HOOD, APP, ..."></textarea>
+          </label>
+          <label class="field narrow">
+            <span>Seconds between requests</span>
+            <input type="number" id="polygon-delay" min="0" step="0.5" value="12.5">
+          </label>
+          <p class="hint">
+            The free tier allows 5 requests a minute (12.5&nbsp;s apart) and serves end-of-day data.
+            Set the delay to 0 on a paid plan.
+          </p>
+        </div>
 
-      <label>Webcam View - </label>
-      <div id="camera"></div> 
-      <br><br>
-      <div id="result"></div>
-      <br><br>
-      <button onclick="take_snapshot();" class="btn btn-info">Capture Image...</button>
-      <br><br>
-      <button onclick="check();" class="btn btn-success">Identify Image...</button>
-      <br><br>
+        <div class="actions">
+          <button id="run" class="primary">Run scan</button>
+          <button id="cancel" hidden>Cancel</button>
+          <span id="status" class="status" role="status" aria-live="polite"></span>
+        </div>
+      </section>
 
-      <p style="font-size: 22px;">Object : <span id="result_object_name"></span>  </p>
-      <p style="font-size: 22px;">Accuracy : <span id="result_object_accuracy"></span> </p>
-    </center>
+      <section class="card" aria-labelledby="risk-h">
+        <h2 id="risk-h">2. Account &amp; risk</h2>
+        <div class="grid" id="risk-fields"></div>
+        <details class="more">
+          <summary>Setup filters</summary>
+          <div class="grid" id="filter-fields"></div>
+          <button id="reset" class="link">Reset all to defaults</button>
+        </details>
+      </section>
 
-  </div>
-<script src="main.js"></script>
+      <section class="card" aria-labelledby="results-h">
+        <div class="results-head">
+          <h2 id="results-h">3. Setups</h2>
+          <label class="check">
+            <input type="checkbox" id="show-all"> Show symbols without a setup
+          </label>
+        </div>
+        <div id="results-empty" class="empty">Run a scan to see setups.</div>
+        <div class="table-wrap">
+          <table id="results" hidden>
+            <thead>
+              <tr>
+                <th scope="col"><span class="sr-only">Add to plan</span></th>
+                <th scope="col">Symbol</th>
+                <th scope="col">Setup</th>
+                <th scope="col" class="num">Last</th>
+                <th scope="col" class="num">Chg</th>
+                <th scope="col" class="num">Gap</th>
+                <th scope="col" class="num">RVOL</th>
+                <th scope="col" class="num">ADR</th>
+                <th scope="col" class="num" title="Distance from the 9 / 21 / 50 EMA">vs 9/21/50</th>
+                <th scope="col" class="num">Stop</th>
+                <th scope="col" class="num">Stop %</th>
+                <th scope="col" class="num">Shares</th>
+                <th scope="col" class="num">Position</th>
+                <th scope="col" class="num">Risk</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div id="plan" class="plan" hidden></div>
+      </section>
 
+      <section class="card" aria-labelledby="calc-h">
+        <h2 id="calc-h">Position size calculator</h2>
+        <div class="grid">
+          <label class="field"><span>Entry</span><input type="number" id="calc-entry" step="0.01" min="0"></label>
+          <label class="field"><span>Stop</span><input type="number" id="calc-stop" step="0.01" min="0"></label>
+        </div>
+        <p id="calc-out" class="calc-out">Enter an entry and a stop below it.</p>
+      </section>
+
+      <section class="card rules" aria-labelledby="rules-h">
+        <h2 id="rules-h">How the setups are defined</h2>
+        <dl>
+          <dt>Gap-up / EP</dt>
+          <dd>Opens at least the minimum gap above yesterday&rsquo;s close on at least the minimum relative
+            volume, and closes in the upper half of the day&rsquo;s range. Stop: the day&rsquo;s low. When trading
+            live, use the low of the first 5&ndash;15 minutes (the opening range) instead.</dd>
+          <dt>Pullback</dt>
+          <dd>Price is above a rising 21 EMA, which is above the 50 EMA. The stock ran up by at least the minimum
+            prior run, is now at least the minimum pullback below its high, and today&rsquo;s low tagged or
+            flushed through the 9/21/50 EMA or the anchored VWAP (anchored at the 60-day swing low) and closed back
+            above it. Stop: below the support level or the day&rsquo;s low, whichever is lower.</dd>
+          <dt>Breakout</dt>
+          <dd>Closes above a tight base (the last N days within the maximum range) on above-average volume, while
+            above the 50 EMA. Stop: the day&rsquo;s low.</dd>
+          <dt>Sizing</dt>
+          <dd>Shares = (account &times; risk&nbsp;%) &divide; (entry &minus; stop), capped by the maximum position
+            size. Setups whose stop is wider than the maximum stop are flagged <em>wide</em>. Luk skips those or
+            waits for a tighter entry.</dd>
+        </dl>
+      </section>
+
+      <p class="disclaimer">
+        Educational tool, not investment advice. Scans use daily bars, so the stops are approximations of intraday
+        levels. Most trades from this style of trading lose; it only works when losses stay small and a few winners
+        run. Paper trade it first.
+      </p>
+    </main>
+
+    <script src="scanner.js"></script>
+    <script src="data.js"></script>
+    <script src="main.js"></script>
   </body>
 </html>
-
- 
