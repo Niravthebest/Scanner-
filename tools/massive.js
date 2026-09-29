@@ -51,7 +51,11 @@ function s3Get(key, cacheDir) {
   } catch (e) {
     throw new Error(`download failed for ${key}: ${e.message.split('\n')[0]}`);
   }
-  if (code === '404' || code === '403') { try { fs.unlinkSync(tmp); } catch (e) { /* ignore */ } return null; }
+  if (code === '404') { try { fs.unlinkSync(tmp); } catch (e) { /* ignore */ } return null; } // holiday / no file
+  if (code === '403') {
+    try { fs.unlinkSync(tmp); } catch (e) { /* ignore */ }
+    throw new Error(`403 Forbidden for ${key}: this key can list files but is not entitled to download them (check the Massive plan)`);
+  }
   if (code !== '200') throw new Error(`HTTP ${code} for ${key}`);
   fs.renameSync(tmp, local);
   return local;
