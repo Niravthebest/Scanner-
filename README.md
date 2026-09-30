@@ -65,6 +65,11 @@ node backtest-cli.js dataset.json --universe=symbols.txt --startDate=2024-01-02 
   [--s.baseDays=15 --s.maxBaseRangePct=15 --s.minRs=70 --s.maxStopPct=8]
 ```
 
+Result warning: these settings were picked on Jan 2024 – Sep 2026, where they returned +99.8%. On
+2017–2023 data, which the tuning never saw, the same settings returned −30.5% while SPY gained 111%.
+Over 2017–2026 they returned +21% (max drawdown −52%) against SPY's +240%. Treat the rules as a
+starting point, not a proven edge.
+
 `--partialAtR=N` sells the partial when the close reaches entry + N x initial risk. With `--strategy`,
 the CLI also prints an equal-weight buy-and-hold of the universe, as a check on survivorship bias.
 
