@@ -8,6 +8,7 @@
  * Any scanner or backtest option can be overridden, e.g.
  *   --startDate=2023-07-01 --riskPct=0.5 --entryMode=close --setupTypes=Pullback,Breakout
  *   --marketFilter=QQQ:21 --benchmarks=SPY,QQQ --trades=trades.csv --json=out.json
+ * Alternative strategy (see strategies/): --strategy=minervini [--s.minRs=80 --s.maxStopPct=7 ...]
  */
 'use strict';
 
@@ -38,6 +39,11 @@ const universe = args.universe
 
 const opts = Object.assign({}, args);
 delete opts._; delete opts.universe; delete opts.benchmarks; delete opts.trades; delete opts.json;
+if (opts.strategy) {
+  const params = {};
+  Object.keys(opts).filter(k => k.startsWith('s.')).forEach(k => { params[k.slice(2)] = opts[k]; delete opts[k]; });
+  opts.strategy = require(`./strategies/${opts.strategy}.js`).create(params);
+}
 if (typeof opts.setupTypes === 'string') opts.setupTypes = opts.setupTypes.split(',').map(s => s === 'Gap-up' ? 'Gap-up / EP' : s);
 if (typeof opts.marketFilter === 'string') {
   const [symbol, ema] = opts.marketFilter.split(':');
@@ -56,6 +62,11 @@ const line = (name, a) => console.log(
   `${name.padEnd(12)} trades ${String(a.trades).padStart(5)}  win ${f(a.winRate).padStart(5)}%  avgWin ${f(a.avgWinR, 2)}R  avgLoss ${f(a.avgLossR, 2)}R  exp ${f(a.expectancyR, 3)}R  PF ${f(a.profitFactor, 2)}  best ${f(a.bestR, 1)}R`);
 line('ALL', s.all);
 Object.keys(s.byType).forEach(k => line(k, s.byType[k]));
+if (universe) {
+  // Equal-weight buy & hold of the same universe: a check on survivorship bias in the symbol list.
+  const rets = universe.map(sym => BT.benchmark(dataset[sym], s.start, s.end)).filter(Boolean).map(r => r.totalReturnPct);
+  console.log(`Universe equal-weight buy & hold: ${f(rets.reduce((a, b) => a + b, 0) / rets.length)}% (${rets.length} symbols)`);
+}
 console.log('Yearly: ' + Object.keys(s.yearly).map(y => `${y} ${f(s.yearly[y])}%`).join('  '));
 
 (args.benchmarks ? String(args.benchmarks).split(',') : ['SPY', 'QQQ']).forEach(b => {

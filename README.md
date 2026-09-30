@@ -50,6 +50,24 @@ Rules: entry on a break of the signal day's high the next day (or at the signal 
 entry and stop counted as losses; sell a third after 3 days if in profit and move the stop to breakeven;
 exit the rest on a close below the trailing EMA. 0.05% slippage per side.
 
+### Minervini SEPA strategy
+
+`strategies/minervini.js` is an alternative signal set based on Mark Minervini's published rules
+(1997 USIC winner; +334.8% $1M+ stock-division record in 2021). It applies the Trend Template
+(close > SMA50 > SMA150 > SMA200, rising SMA200, within 25% of the 52-week high, 30%+ above the low,
+relative-strength rank >= 70 across the universe) and then requires a tight, contracting base with
+drying volume. It buys a break of the base high and places the stop at the base low, capped at 8%.
+
+```sh
+node backtest-cli.js dataset.json --universe=symbols.txt --startDate=2024-01-02 --strategy=minervini \
+  --riskPct=1.25 --maxPositionPct=25 --maxExposurePct=100 --marketFilter=SPY:50 \
+  --partialAtR=2 --partialFraction=0.33 --trailEma=50 --trailAfterDays=0 --maxHoldDays=250 \
+  [--s.baseDays=15 --s.maxBaseRangePct=15 --s.minRs=70 --s.maxStopPct=8]
+```
+
+`--partialAtR=N` sells the partial when the close reaches entry + N x initial risk. With `--strategy`,
+the CLI also prints an equal-weight buy-and-hold of the universe, as a check on survivorship bias.
+
 ## Intraday-entry backtest (Massive flat files)
 
 `intraday-backtest.js` tests Luk-style execution: candidates are picked before the open (daily
@@ -78,6 +96,7 @@ overnight gaps. ETFs are not flagged in the files: pass `--exclude=etfs.txt` to 
 - `data.js`: demo generator, CSV parser, Polygon client
 - `main.js`, `index.html`, `style.css`: the UI
 - `backtest.js`, `backtest-cli.js`: daily-bar portfolio backtest
+- `strategies/minervini.js`: Minervini SEPA signals for the backtest (`--strategy=minervini`)
 - `intraday-backtest.js`, `intraday-cli.js`: opening-range-break backtest
 - `tools/massive.js`: Massive flat-file downloader (daily + intraday)
 - `test/`: tests

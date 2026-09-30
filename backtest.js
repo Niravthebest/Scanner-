@@ -32,7 +32,10 @@
     skipWideStops: true,
     setupTypes: null, // e.g. ['Pullback'] to restrict; null = all
     marketFilter: null, // { symbol: 'QQQ', ema: 21 } -> only enter when index closes above its EMA
-    lookbackBars: 200 // bars handed to the scanner each day (EMA50 is well converged by then)
+    lookbackBars: 200, // bars handed to the scanner each day (EMA50 is well converged by then)
+    partialAtR: null, // if set, take the partial when the close reaches entry + N x initial risk (instead of after partialDays)
+    trailAfterDays: null, // days before the trailing exit applies; null = partialDays
+    strategy: null // optional { prepare(prepared, calendar, symbols, o) -> ctx, signal(sym, P, i, ctx, o) -> {type, trigger, stop, stopPct, rank} }
   };
 
   function withBtDefaults(opts) {
@@ -82,6 +85,7 @@
     var prep = p.prepared;
     var calendar = p.calendar.filter(function (d) { return !o.endDate || d <= o.endDate; });
     var symbols = (tradeUniverse || Object.keys(prep)).filter(function (s) { return prep[s]; });
+    var ctx = o.strategy && o.strategy.prepare ? o.strategy.prepare(prep, calendar, symbols, o) : null;
 
     var cash = o.initialEquity;
     var positions = []; // open
@@ -132,7 +136,10 @@
           closePart(pos, pos.shares, pos.stop, date, pos.stop >= pos.entry ? 'breakeven stop' : 'stop');
         } else {
           pos.daysHeld += 1;
-          if (!pos.partialDone && pos.daysHeld >= o.partialDays && b.close > pos.entry && o.partialFraction > 0) {
+          var partialDue = o.partialAtR
+            ? b.close >= pos.entry + o.partialAtR * (pos.entry - pos.initialStop)
+            : pos.daysHeld >= o.partialDays && b.close > pos.entry;
+          if (!pos.partialDone && partialDue && o.partialFraction > 0) {
             var sell = Math.floor(pos.shares * o.partialFraction);
             if (sell > 0) closePart(pos, sell, b.close, date, 'partial');
             pos.partialDone = true;
@@ -141,7 +148,7 @@
           if (pos.shares > 0) {
             var t = P.trail[i];
             // Trail only once the partial window has passed; before that only the initial stop applies.
-            var trailing = pos.partialDone || pos.daysHeld >= o.partialDays;
+            var trailing = pos.partialDone || pos.daysHeld >= (o.trailAfterDays !== null ? o.trailAfterDays : o.partialDays);
             if (trailing && t !== null && b.close < t) closePart(pos, pos.shares, b.close, date, 'trail');
             else if (pos.daysHeld >= o.maxHoldDays) closePart(pos, pos.shares, b.close, date, 'time');
           }
@@ -198,6 +205,11 @@
           var P = prep[sym];
           var i = P.idx[date];
           if (i === undefined || i < S.MIN_BARS) return;
+          if (o.strategy) {
+            var sg = o.strategy.signal(sym, P, i, ctx, o);
+            if (sg) sigs.push(Object.assign({ symbol: sym, date: date }, sg, o.entryMode === 'close' ? { trigger: P.bars[i].close, atClose: true } : {}));
+            return;
+          }
           var window = P.bars.slice(Math.max(0, i + 1 - o.lookbackBars), i + 1);
           var r = S.analyze(sym, window, o);
           if (!r || !r.setups.length) return;
@@ -214,7 +226,10 @@
             sigs.push({ symbol: sym, date: date, type: s.type, trigger: bar.high, stop: s.stop, stopPct: s.stopPct, rvol: r.metrics.rvol });
           }
         });
-        sigs.sort(function (a, b) { return a.stopPct - b.stopPct || (b.rvol || 0) - (a.rvol || 0); });
+        sigs.sort(function (a, b) {
+          if (a.rank !== undefined || b.rank !== undefined) return (b.rank || 0) - (a.rank || 0);
+          return a.stopPct - b.stopPct || (b.rvol || 0) - (a.rvol || 0);
+        });
 
         if (o.entryMode === 'close') {
           // Fill immediately at the close.
